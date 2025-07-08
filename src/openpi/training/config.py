@@ -20,6 +20,7 @@ import openpi.models.tokenizer as _tokenizer
 import openpi.policies.aloha_policy as aloha_policy
 import openpi.policies.droid_policy as droid_policy
 import openpi.policies.libero_policy as libero_policy
+import openpi.policies.labsim_policy as labsim_policy
 import openpi.shared.download as _download
 import openpi.shared.normalize as _normalize
 import openpi.training.droid_rlds_dataset as droid_rlds_dataset
@@ -327,6 +328,46 @@ class LeRobotLiberoDataConfig(DataConfigFactory):
 
 
 @dataclasses.dataclass(frozen=True)
+class LabSimDataConfig(DataConfigFactory):
+    """
+    Config for training on LabSim dataset converted to LeRobot format.
+    Designed to work with the LabSim dataset structure from the conversion script.
+    """
+
+    # If provided, will be injected into the input data if the "prompt" key is not present.
+    default_prompt: str | None = None
+    # If true, will convert joint dimensions to deltas with respect to the current state before passing to the model.
+    use_delta_joint_actions: bool = True
+
+    @override
+    def create(self, assets_dirs: pathlib.Path, model_config: _model.BaseModelConfig) -> DataConfig:
+        # Data transforms for LabSim - using LabSim-specific transforms
+        data_transforms = _transforms.Group(
+            inputs=[labsim_policy.LabSimInputs(action_dim=model_config.action_dim, model_type=model_config.model_type)],
+            outputs=[labsim_policy.LabSimOutputs()],
+        )
+
+        # Apply delta action conversion if needed
+        # LabSim typically uses absolute joint positions, so convert to delta actions
+        if self.use_delta_joint_actions:
+            # Adjust the mask based on your robot's DOF (8 for your LabSim dataset)
+            delta_action_mask = _transforms.make_bool_mask(7, -1)  # 7 joints + 1 gripper
+            data_transforms = data_transforms.push(
+                inputs=[_transforms.DeltaActions(delta_action_mask)],
+                outputs=[_transforms.AbsoluteActions(delta_action_mask)],
+            )
+
+        # Model transforms - standard for all models
+        model_transforms = ModelTransformFactory(default_prompt=self.default_prompt)(model_config)
+
+        return dataclasses.replace(
+            self.create_base_config(assets_dirs),
+            data_transforms=data_transforms,
+            model_transforms=model_transforms,
+        )
+
+
+@dataclasses.dataclass(frozen=True)
 class RLDSDroidDataConfig(DataConfigFactory):
     """
     Config for training on DROID, using RLDS data format (for efficient training on larger datasets).
@@ -356,6 +397,7 @@ class RLDSDroidDataConfig(DataConfigFactory):
             inputs=[droid_policy.DroidInputs(action_dim=model_config.action_dim, model_type=model_config.model_type)],
             outputs=[droid_policy.DroidOutputs()],
         )
+        
 
         if self.action_space == droid_rlds_dataset.DroidActionSpace.JOINT_POSITION:
             # Data loader returns absolute joint position actions -- convert to delta actions for training.
@@ -725,6 +767,36 @@ _CONFIGS = [
         exp_name="debug",
         num_train_steps=10,
         wandb_enabled=False,
+    ),
+    TrainConfig(
+        name="pi0_labsim",
+        model=pi0.Pi0Config(action_dim=8),  # Updated to match your dataset
+        data=LabSimDataConfig(
+            repo_id="your_hf_username/labsim_dataset",
+            default_prompt="Perform laboratory task",
+            use_delta_joint_actions=True,
+            base_config=DataConfig(
+                prompt_from_task=True,  # Use task descriptions from LabSim data
+            ),
+        ),
+        weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi0_base/params"),
+        num_train_steps=20_000,
+        batch_size=16,
+    ),
+    TrainConfig(
+        name="pi0_fast_labsim",
+        model=pi0_fast.Pi0FASTConfig(action_dim=8, action_horizon=10, max_token_len=180),  # Updated to match your dataset
+        data=LabSimDataConfig(
+            repo_id="your_hf_username/labsim_dataset",
+            default_prompt="Perform laboratory task",
+            use_delta_joint_actions=True,
+            base_config=DataConfig(
+                prompt_from_task=True,
+            ),
+        ),
+        weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi0_fast_base/params"),
+        num_train_steps=20_000,
+        batch_size=16,
     ),
 ]
 
