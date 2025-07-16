@@ -770,9 +770,9 @@ _CONFIGS = [
     ),
     TrainConfig(
         name="pi0_labsim",
-        model=pi0.Pi0Config(action_dim=8),  # Updated to match your dataset
+        model=pi0.Pi0Config(action_horizon=60),  # Updated to match your dataset
         data=LabSimDataConfig(
-            repo_id="your_hf_username/labsim_dataset",
+            repo_id="labutopia/pickpour_single",
             default_prompt="Perform laboratory task",
             use_delta_joint_actions=True,
             base_config=DataConfig(
@@ -780,23 +780,23 @@ _CONFIGS = [
             ),
         ),
         weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi0_base/params"),
-        num_train_steps=20_000,
-        batch_size=16,
+        num_train_steps=60_000,
+        batch_size=32,
     ),
     TrainConfig(
-        name="pi0_fast_labsim",
-        model=pi0_fast.Pi0FASTConfig(action_dim=8, action_horizon=10, max_token_len=180),  # Updated to match your dataset
+        name="pi0_labsim_absolute",
+        model=pi0.Pi0Config(action_horizon=60, max_token_len=180,),  # Updated to match your dataset
         data=LabSimDataConfig(
-            repo_id="your_hf_username/labsim_dataset",
+            repo_id="labutopia/pickpour_single",
             default_prompt="Perform laboratory task",
-            use_delta_joint_actions=True,
+            use_delta_joint_actions=False,
             base_config=DataConfig(
-                prompt_from_task=True,
+                prompt_from_task=True,  # Use task descriptions from LabSim data
             ),
         ),
-        weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi0_fast_base/params"),
-        num_train_steps=20_000,
-        batch_size=16,
+        weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi0_base/params"),
+        num_train_steps=60_000,
+        batch_size=32,
     ),
 ]
 

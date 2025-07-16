@@ -7,16 +7,6 @@ from openpi import transforms
 from openpi.models import model as _model
 
 
-def make_labsim_example() -> dict:
-    """Creates a random input example for the LabSim policy."""
-    return {
-        "state": np.random.rand(8),  # 8-DOF robot state
-        "camera_0_rgb": np.random.randint(256, size=(256, 256, 3), dtype=np.uint8),  # Primary camera
-        "camera_1_rgb": np.random.randint(256, size=(256, 256, 3), dtype=np.uint8),  # Secondary camera
-        "task": "Perform laboratory task",
-    }
-
-
 def _parse_image(image) -> np.ndarray:
     """Parse image to uint8 (H,W,C) format."""
     image = np.asarray(image)
@@ -40,16 +30,19 @@ class LabSimInputs(transforms.DataTransformFn):
 
         camera_1_rgb = _parse_image(data["camera_1_rgb"])
         camera_2_rgb = _parse_image(data["camera_2_rgb"])
+        camera_3_rgb = _parse_image(data["camera_3_rgb"])
 
         inputs = {
             "state": state,
             "image": {
-                "camera_1_rgb": camera_1_rgb,
-                "camera_2_rgb": camera_2_rgb,
+                "base_0_rgb": camera_1_rgb,
+                "left_wrist_0_rgb": camera_2_rgb,
+                "right_wrist_0_rgb": camera_3_rgb,
             },
             "image_mask": {
-                "camera_1_rgb": np.True_,
-                "camera_2_rgb": np.True_,
+                "base_0_rgb": np.True_,
+                "left_wrist_0_rgb": np.True_,
+                "right_wrist_0_rgb": np.True_,
             },
         }
 
@@ -58,6 +51,7 @@ class LabSimInputs(transforms.DataTransformFn):
             inputs["actions"] = actions
 
         if "task" in data:
+            print(data["task"])
             inputs["prompt"] = data["task"]
 
         return inputs
