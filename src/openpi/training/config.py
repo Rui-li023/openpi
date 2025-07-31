@@ -772,35 +772,108 @@ _CONFIGS = [
         wandb_enabled=False,
     ),
     TrainConfig(
-        name="pi0_labsim",
+        name="pi0_level3_pickpour",
         model=pi0.Pi0Config(action_horizon=60),  # Updated to match your dataset
         data=LabSimDataConfig(
-            repo_id="labutopia/pickpour_single",
-            default_prompt="Perform laboratory task",
+            repo_id="labutopia/level3_pickpour",
+            default_prompt="Pick up the object from the table and pour it to the beaker.",
             use_delta_joint_actions=True,
             base_config=DataConfig(
                 prompt_from_task=True,  # Use task descriptions from LabSim data
             ),
         ),
         weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi0_base/params"),
-        num_train_steps=60_000,
+        num_train_steps=40_000,
         batch_size=32,
+        keep_period=10000,
+        resume=True,
     ),
     TrainConfig(
-        name="pi0_labsim_absolute",
-        model=pi0.Pi0Config(action_horizon=60, max_token_len=180,),  # Updated to match your dataset
+        name="pi0_level3_pick",
+        model=pi0.Pi0Config(action_horizon=60),  # Updated to match your dataset
         data=LabSimDataConfig(
-            repo_id="labutopia/pickpour_single",
-            default_prompt="Perform laboratory task",
-            use_delta_joint_actions=False,
+            repo_id="labutopia/level3_pick",
+            default_prompt="Pick up the object from the table.",
+            use_delta_joint_actions=True,
             base_config=DataConfig(
                 prompt_from_task=True,  # Use task descriptions from LabSim data
             ),
         ),
         weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi0_base/params"),
-        num_train_steps=60_000,
+        num_train_steps=40_000,
         batch_size=32,
+        keep_period=10000,
+        resume=True,
     ),
+    TrainConfig(
+        name="pi0_level3_HeatLiquid",
+        model=pi0.Pi0Config(action_horizon=60),  # Updated to match your dataset
+        data=LabSimDataConfig(
+            repo_id="labutopia/level3_HeatLiquid",
+            default_prompt="Pick up the beaker and place the beaker on the target and press the button",
+            use_delta_joint_actions=True,
+            base_config=DataConfig(
+                prompt_from_task=True,  # Use task descriptions from LabSim data
+            ),
+        ),
+        weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi0_base/params"),
+        num_train_steps=40_000,
+        batch_size=32,
+        keep_period=10000,
+        resume=True,
+    ),
+    TrainConfig(
+        name="pi0_level3_press",
+        model=pi0.Pi0Config(action_horizon=60),  # Updated to match your dataset
+        data=LabSimDataConfig(
+            repo_id="labutopia/level3_press",
+            default_prompt="Press the button or switch",
+            use_delta_joint_actions=True,
+            base_config=DataConfig(
+                prompt_from_task=True,  # Use task descriptions from LabSim data
+            ),
+        ),
+        weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi0_base/params"),
+        num_train_steps=40_000,
+        batch_size=32,
+        keep_period=10000,
+        resume=True,
+    ),
+    TrainConfig(
+        name="pi0_level3_TransportBeaker",
+        model=pi0.Pi0Config(action_horizon=60),  # Updated to match your dataset
+        data=LabSimDataConfig(
+            repo_id="labutopia/level3_TransportBeaker",
+            default_prompt="Press the button or switch",
+            use_delta_joint_actions=True,
+            base_config=DataConfig(
+                prompt_from_task=True,  # Use task descriptions from LabSim data
+            ),
+        ),
+        weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi0_base/params"),
+        num_train_steps=40_000,
+        batch_size=32,
+        keep_period=10000,
+        resume=True,
+    ),
+    TrainConfig(
+        name="pi0_level3_open",
+        model=pi0.Pi0Config(action_horizon=60),  # Updated to match your dataset
+        data=LabSimDataConfig(
+            repo_id="labutopia/level3_open",
+            default_prompt="Open the door",
+            use_delta_joint_actions=True,
+            base_config=DataConfig(
+                prompt_from_task=True,  # Use task descriptions from LabSim data
+            ),
+        ),
+        weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi0_base/params"),
+        num_train_steps=40_000,
+        batch_size=32,
+        keep_period=10000,
+        resume=True,
+    )
+    
 ]
 
 if len({config.name for config in _CONFIGS}) != len(_CONFIGS):

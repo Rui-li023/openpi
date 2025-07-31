@@ -51,7 +51,6 @@ class LabSimInputs(transforms.DataTransformFn):
             inputs["actions"] = actions
 
         if "task" in data:
-            print(data["task"])
             inputs["prompt"] = data["task"]
 
         return inputs
