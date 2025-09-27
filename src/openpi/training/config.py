@@ -990,7 +990,7 @@ _CONFIGS = [
     ),
     TrainConfig(
         name="pi0_level3_pickpour",
-        model=pi0.Pi0Config(action_horizon=60),  # Updated to match your dataset
+        model=pi0_config.Pi0Config(action_horizon=60),  # Updated to match your dataset
         data=LabSimDataConfig(
             repo_id="labutopia/level3_pickpour",
             default_prompt="Pick up the object from the table and pour it to the beaker.",
@@ -1007,7 +1007,7 @@ _CONFIGS = [
     ),
     TrainConfig(
         name="pi0_level3_pick",
-        model=pi0.Pi0Config(action_horizon=60),  # Updated to match your dataset
+        model=pi0_config.Pi0Config(action_horizon=60),  # Updated to match your dataset
         data=LabSimDataConfig(
             repo_id="labutopia/level3_pick",
             default_prompt="Pick up the object from the table.",
@@ -1038,7 +1038,7 @@ _CONFIGS = [
     *roboarena_config.get_roboarena_configs(),
     TrainConfig(
         name="pi0_level3_HeatLiquid",
-        model=pi0.Pi0Config(action_horizon=60),  # Updated to match your dataset
+        model=pi0_config.Pi0Config(action_horizon=60),  # Updated to match your dataset
         data=LabSimDataConfig(
             repo_id="labutopia/level3_HeatLiquid",
             default_prompt="Pick up the beaker and place the beaker on the target and press the button",
@@ -1055,7 +1055,7 @@ _CONFIGS = [
     ),
     TrainConfig(
         name="pi0_level3_press",
-        model=pi0.Pi0Config(action_horizon=60),  # Updated to match your dataset
+        model=pi0_config.Pi0Config(action_horizon=60),  # Updated to match your dataset
         data=LabSimDataConfig(
             repo_id="labutopia/level3_press",
             default_prompt="Press the button or switch",
@@ -1072,7 +1072,7 @@ _CONFIGS = [
     ),
     TrainConfig(
         name="pi0_level3_TransportBeaker",
-        model=pi0.Pi0Config(action_horizon=60),  # Updated to match your dataset
+        model=pi0_config.Pi0Config(action_horizon=60),  # Updated to match your dataset
         data=LabSimDataConfig(
             repo_id="labutopia/level3_TransportBeaker",
             default_prompt="Press the button or switch",
@@ -1089,7 +1089,7 @@ _CONFIGS = [
     ),
     TrainConfig(
         name="pi0_level3_open",
-        model=pi0.Pi0Config(action_horizon=60),  # Updated to match your dataset
+        model=pi0_config.Pi0Config(action_horizon=60),  # Updated to match your dataset
         data=LabSimDataConfig(
             repo_id="labutopia/level3_open",
             default_prompt="Open the door",
