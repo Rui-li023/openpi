@@ -20,7 +20,9 @@ import openpi.models.tokenizer as _tokenizer
 import openpi.policies.aloha_policy as aloha_policy
 import openpi.policies.droid_policy as droid_policy
 import openpi.policies.libero_policy as libero_policy
+import openpi.policies.libero2_policy as libero2_policy
 import openpi.policies.labsim_policy as labsim_policy
+import openpi.policies.spacemouse_policy as spacemouse_policy
 import openpi.shared.download as _download
 import openpi.shared.normalize as _normalize
 import openpi.training.droid_rlds_dataset as droid_rlds_dataset
@@ -356,6 +358,85 @@ class LeRobotLiberoDataConfig(DataConfigFactory):
 
 
 @dataclasses.dataclass(frozen=True)
+class LeRobotLibero2DataConfig(DataConfigFactory):
+    """
+    This config is used to configure transforms that are applied at various parts of the data pipeline.
+    For your own dataset, you can copy this class and modify the transforms to match your dataset based on the
+    comments below.
+    """
+
+    extra_delta_transform: bool = False
+
+    @override
+    def create(self, assets_dirs: pathlib.Path, model_config: _model.BaseModelConfig) -> DataConfig:
+        data_transforms = _transforms.Group(
+            inputs=[libero2_policy.Libero2Inputs(model_type=model_config.model_type, action_dim=model_config.action_dim)],
+            outputs=[libero2_policy.Libero2Outputs()],
+        )
+
+        if self.extra_delta_transform:
+            delta_action_mask = _transforms.make_bool_mask(7, -1)
+            data_transforms = data_transforms.push(
+                inputs=[_transforms.DeltaActions(delta_action_mask)],
+                outputs=[_transforms.AbsoluteActions(delta_action_mask)],
+            )
+
+        # Model transforms include things like tokenizing the prompt and action targets
+        # You do not need to change anything here for your own dataset.
+        model_transforms = ModelTransformFactory()(model_config)
+
+        # We return all data transforms for training and inference. No need to change anything here.
+        return dataclasses.replace(
+            self.create_base_config(assets_dirs, model_config),
+            data_transforms=data_transforms,
+            model_transforms=model_transforms,
+        )
+
+@dataclasses.dataclass(frozen=True)
+class LeRobotSpaceMouseDataConfig(DataConfigFactory):
+    """
+    Config for training on SpaceMouse dataset in LeRobot format.
+    SpaceMouse dataset uses delta actions (relative joint movements), similar to Libero.
+    """
+
+    # If provided, will be injected into the input data if the "prompt" key is not present.
+    default_prompt: str | None = None
+
+    @override
+    def create(self, assets_dirs: pathlib.Path, model_config: _model.BaseModelConfig) -> DataConfig:
+        # Repack transform to map dataset keys to expected keys
+        repack_transform = _transforms.Group(
+            inputs=[
+                _transforms.RepackTransform(
+                    {
+                        "observation/image": "observation.images.camera_CP2R553000FZ",
+                        "observation/wrist_image": "observation.images.camera_CP026530002N",
+                        "observation/state": "observation.state",
+                        "actions": "action",
+                    }
+                )
+            ]
+        )
+
+        # Data transforms for SpaceMouse
+        # Note: SpaceMouse actions are already delta actions, so no additional delta transform needed
+        data_transforms = _transforms.Group(
+            inputs=[spacemouse_policy.SpaceMouseInputs(model_type=model_config.model_type)],
+            outputs=[spacemouse_policy.SpaceMouseOutputs()],
+        )
+
+        # Model transforms - standard for all models
+        model_transforms = ModelTransformFactory(default_prompt=self.default_prompt)(model_config)
+
+        return dataclasses.replace(
+            self.create_base_config(assets_dirs, model_config),
+            repack_transforms=repack_transform,
+            data_transforms=data_transforms,
+            model_transforms=model_transforms,
+        )
+
+
+@dataclasses.dataclass(frozen=True)
 class LabSimDataConfig(DataConfigFactory):
     """
     Config for training on LabSim dataset converted to LeRobot format.
@@ -389,7 +470,7 @@ class LabSimDataConfig(DataConfigFactory):
         model_transforms = ModelTransformFactory(default_prompt=self.default_prompt)(model_config)
 
         return dataclasses.replace(
-            self.create_base_config(assets_dirs),
+            self.create_base_config(assets_dirs, model_config),
             data_transforms=data_transforms,
             model_transforms=model_transforms,
         )
@@ -990,7 +1071,7 @@ _CONFIGS = [
     ),
     TrainConfig(
         name="pi0_level3_pickpour",
-        model=pi0.Pi0Config(action_horizon=60),  # Updated to match your dataset
+        model=pi0_config.Pi0Config(action_horizon=60),  # Updated to match your dataset
         data=LabSimDataConfig(
             repo_id="labutopia/level3_pickpour",
             default_prompt="Pick up the object from the table and pour it to the beaker.",
@@ -1007,7 +1088,7 @@ _CONFIGS = [
     ),
     TrainConfig(
         name="pi0_level3_pick",
-        model=pi0.Pi0Config(action_horizon=60),  # Updated to match your dataset
+        model=pi0_config.Pi0Config(action_horizon=60),  # Updated to match your dataset
         data=LabSimDataConfig(
             repo_id="labutopia/level3_pick",
             default_prompt="Pick up the object from the table.",
@@ -1038,7 +1119,7 @@ _CONFIGS = [
     *roboarena_config.get_roboarena_configs(),
     TrainConfig(
         name="pi0_level3_HeatLiquid",
-        model=pi0.Pi0Config(action_horizon=60),  # Updated to match your dataset
+        model=pi0_config.Pi0Config(action_horizon=60),  # Updated to match your dataset
         data=LabSimDataConfig(
             repo_id="labutopia/level3_HeatLiquid",
             default_prompt="Pick up the beaker and place the beaker on the target and press the button",
@@ -1055,7 +1136,7 @@ _CONFIGS = [
     ),
     TrainConfig(
         name="pi0_level3_press",
-        model=pi0.Pi0Config(action_horizon=60),  # Updated to match your dataset
+        model=pi0_config.Pi0Config(action_horizon=60),  # Updated to match your dataset
         data=LabSimDataConfig(
             repo_id="labutopia/level3_press",
             default_prompt="Press the button or switch",
@@ -1072,7 +1153,7 @@ _CONFIGS = [
     ),
     TrainConfig(
         name="pi0_level3_TransportBeaker",
-        model=pi0.Pi0Config(action_horizon=60),  # Updated to match your dataset
+        model=pi0_config.Pi0Config(action_horizon=60),  # Updated to match your dataset
         data=LabSimDataConfig(
             repo_id="labutopia/level3_TransportBeaker",
             default_prompt="Press the button or switch",
@@ -1089,7 +1170,7 @@ _CONFIGS = [
     ),
     TrainConfig(
         name="pi0_level3_open",
-        model=pi0.Pi0Config(action_horizon=60),  # Updated to match your dataset
+        model=pi0_config.Pi0Config(action_horizon=60),  # Updated to match your dataset
         data=LabSimDataConfig(
             repo_id="labutopia/level3_open",
             default_prompt="Open the door",
@@ -1103,8 +1184,50 @@ _CONFIGS = [
         batch_size=32,
         keep_period=10000,
         resume=True,
-    )
-    
+    ),
+    TrainConfig(
+        name="pi0_libero2",
+        model=pi0_config.Pi0Config(action_horizon=20, discrete_state_input=False),
+        data=LeRobotLibero2DataConfig(
+            repo_id="filter_libero/libero_spatial",
+            base_config=DataConfig(prompt_from_task=True, action_sequence_keys=("action",)),
+            extra_delta_transform=True,
+        ),
+        batch_size=64,
+        lr_schedule=_optimizer.CosineDecaySchedule(
+            warmup_steps=10_000,
+            peak_lr=5e-5,
+            decay_steps=1_000_000,
+            decay_lr=5e-5,
+        ),
+        optimizer=_optimizer.AdamW(clip_gradient_norm=1.0),
+        ema_decay=0.999,
+        weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi0_base/params"),
+        num_train_steps=100000,
+        resume=True,
+        save_interval=1000,
+        keep_period=10000
+    ),
+    #
+    # SpaceMouse configs.
+    #
+    TrainConfig(
+        name="pi0_spacemouse_pick_pumpkin",
+        model=pi0_config.Pi0Config(action_horizon=20),
+        data=LeRobotSpaceMouseDataConfig(
+            repo_id="real_franka/pick_pumpkin",
+            default_prompt="pick up the organe pumpkin",
+            base_config=DataConfig(
+                prompt_from_task=False,
+                action_sequence_keys=("action",)  # 添加这一行
+            ),
+        ),
+        weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi0_base/params"),
+        num_train_steps=30_000,
+        batch_size=32,
+        save_interval=1000,
+        keep_period=10000,
+    ),
 ]
 
 if len({config.name for config in _CONFIGS}) != len(_CONFIGS):
