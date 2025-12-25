@@ -23,6 +23,7 @@ import openpi.policies.libero_policy as libero_policy
 import openpi.policies.libero2_policy as libero2_policy
 import openpi.policies.labsim_policy as labsim_policy
 import openpi.policies.spacemouse_policy as spacemouse_policy
+import openpi.policies.gello_policy as gello_policy
 import openpi.shared.download as _download
 import openpi.shared.normalize as _normalize
 import openpi.training.droid_rlds_dataset as droid_rlds_dataset
@@ -435,7 +436,50 @@ class LeRobotSpaceMouseDataConfig(DataConfigFactory):
             model_transforms=model_transforms,
         )
 
+@dataclasses.dataclass(frozen=True)
+class LeRobotGelloDataConfig(DataConfigFactory):
+    """
+    Config for training on Gello dataset in LeRobot format.
+    Gello dataset uses delta actions (relative joint movements), similar to Libero.
+    """
 
+    # If provided, will be injected into the input data if the "prompt" key is not present.
+    default_prompt: str | None = None
+
+    @override
+    def create(self, assets_dirs: pathlib.Path, model_config: _model.BaseModelConfig) -> DataConfig:
+        # Repack transform to map dataset keys to expected keys
+        repack_transform = _transforms.Group(
+            inputs=[
+                _transforms.RepackTransform(
+                    {
+                        "observation/image": "observation.images.left_camera",
+                        "observation/wrist_image": "observation.images.wrist_camera",
+                        "observation/right_wrist_image": "observation.images.right_camera",
+                        "observation/state": "observation.state",
+                        "actions": "actions",
+                    }
+                )
+            ]
+        )
+
+        # Data transforms for SpaceMouse
+        # Note: SpaceMouse actions are already delta actions, so no additional delta transform needed
+        data_transforms = _transforms.Group(
+            inputs=[gello_policy.GelloInputs(model_type=model_config.model_type)],
+            outputs=[gello_policy.GelloOutputs()],
+        )
+
+        # Model transforms - standard for all models
+        model_transforms = ModelTransformFactory(default_prompt=self.default_prompt)(model_config)
+
+        return dataclasses.replace(
+            self.create_base_config(assets_dirs, model_config),
+            repack_transforms=repack_transform,
+            data_transforms=data_transforms,
+            model_transforms=model_transforms,
+        )
+        
 @dataclasses.dataclass(frozen=True)
 class LabSimDataConfig(DataConfigFactory):
     """
@@ -1213,21 +1257,73 @@ _CONFIGS = [
     #
     TrainConfig(
         name="pi0_spacemouse_pick_pumpkin",
-        model=pi0_config.Pi0Config(action_horizon=20),
+        model=pi0_config.Pi0Config(action_horizon=40),
         data=LeRobotSpaceMouseDataConfig(
             repo_id="real_franka/pick_pumpkin",
-            default_prompt="pick up the organe pumpkin",
+            default_prompt="pick up the banana and put it in the basket",
             base_config=DataConfig(
                 prompt_from_task=False,
-                action_sequence_keys=("action",)  # 添加这一行
+                action_sequence_keys=("action",)
+            ),
+        ),
+        weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi0_base/params"),
+        num_train_steps=100_000,
+        batch_size=256,
+        save_interval=2000,
+        keep_period=20_000,
+    ),
+    TrainConfig(
+        name="pi05_spacemouse_pick_banana",
+        model=pi0_config.Pi0Config(pi05=True, action_horizon=40),
+        data=LeRobotSpaceMouseDataConfig(
+            repo_id="real_franka/pick_banana",
+            default_prompt="pick up the banana and put it in the basket",
+            base_config=DataConfig(
+                prompt_from_task=False,
+                action_sequence_keys=("actions",)
+            ),
+        ),
+        weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi05_base/params"),
+        num_train_steps=30_000,
+        batch_size=256,
+        save_interval=2000,
+        keep_period=10_000,
+    ),
+    # gello config
+    TrainConfig(
+        name="pi05_gello_franka",
+        model=pi0_config.Pi0Config(pi05=True, action_horizon=40),
+        data=LeRobotGelloDataConfig(
+            repo_id="real_franka/pick_place_cup1215",
+            default_prompt="pick up the cup and place it on the platform",
+            base_config=DataConfig(
+                prompt_from_task=False,
+                action_sequence_keys=("actions",)
+            ),
+        ),
+        weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi05_base/params"),
+        num_train_steps=18000,
+        batch_size=64*4,
+        save_interval=1500,
+        keep_period=6000,
+    ),
+    TrainConfig(
+        name="pi0_gello_franka",
+        model=pi0_config.Pi0Config(action_horizon=30),
+        data=LeRobotGelloDataConfig(
+            repo_id="real_franka/pick_place_cup1212",
+            default_prompt="pick up the cup and place it on the platform",
+            base_config=DataConfig(
+                prompt_from_task=False,
+                action_sequence_keys=("actions",)
             ),
         ),
         weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi0_base/params"),
         num_train_steps=30_000,
-        batch_size=32,
-        save_interval=1000,
-        keep_period=10000,
-    ),
+        batch_size=64*4,
+        save_interval=2000,
+        keep_period=10_000,
+    ), 
 ]
 
 if len({config.name for config in _CONFIGS}) != len(_CONFIGS):

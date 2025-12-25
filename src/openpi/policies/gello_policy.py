@@ -40,9 +40,9 @@ def _parse_image(image) -> np.ndarray:
 
 
 @dataclasses.dataclass(frozen=True)
-class SpaceMouseInputs(transforms.DataTransformFn):
+class GelloInputs(transforms.DataTransformFn):
     """
-    Transform for SpaceMouse dataset inputs.
+    Transform for Gello dataset inputs.
     Converts dataset format to the format expected by pi0 models.
     """
 
@@ -84,13 +84,13 @@ class SpaceMouseInputs(transforms.DataTransformFn):
 
 
 @dataclasses.dataclass(frozen=True)
-class SpaceMouseOutputs(transforms.DataTransformFn):
+class GelloOutputs(transforms.DataTransformFn):
     """
-    Transform for SpaceMouse dataset outputs.
+    Transform for Gello dataset outputs.
     Converts model outputs back to dataset-specific format.
     """
 
     def __call__(self, data: dict) -> dict:
-        # Return only the first 7 actions (SpaceMouse action dimension)
-        return {"actions": np.asarray(data["actions"][:, :7])}
+        # Return only the first 7 actions (Gello action dimension)
+        return {"actions": np.asarray(data["actions"][:, :8])}
 
